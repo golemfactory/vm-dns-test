@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "vm-dns-test"
+version = "0.1.0"
+description = ""
+authors = ["shadeofblue <blue@golem.network>"]
+license = "GNU GPL v3"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+yapapi = "^0.12.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
