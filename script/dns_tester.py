@@ -18,7 +18,7 @@ NAMES = [
     "duckduckgo.com",
 ]
 
-DEFAULT_NUM_REQUESTS = 1
+DEFAULT_NUM_REQUESTS = 10
 DEFAULT_NUM_ATTEMPTS = 3
 DEFAULT_TIMEOUT = 10
 
@@ -33,8 +33,8 @@ class Node:
     _nodes = {}
 
     @classmethod
-    def get_node_by_ip(cls, ip: str):
-        return cls._nodes.setdefault(ip, Node(ip))
+    def get_node_by_id(cls, node_id: str):
+        return cls._nodes.setdefault(node_id, Node(node_id))
 
 
 @dataclass
@@ -72,48 +72,68 @@ class NodeResults:
     node: Node
     results: List[Result]
 
+    def filter_results(self, result_type: ResultType):
+        return [r for r in self.results if r.result_type == result_type]
+
+    def summary(self):
+        out = (
+            f"{self.node.name} ({self.node.node_id}): "
+            f"all: {colorful.bold_white(len(self.results))}, "
+        )
+        ok = self.filter_results('ok')
+        problem = self.filter_results('problem')
+        bad = self.filter_results('bad')
+
+        by_type = []
+
+        if ok:
+            by_type.append(colorful.bold_green(f"ok: {len(ok)}"))
+        if problem:
+            by_type.append(colorful.bold_yellow(f"problem: {len(problem)}"))
+        if bad:
+            by_type.append(colorful.bold_red(f"bad: {len(bad)}"))
+
+        return out + ", ".join([str(b) for b in by_type])
 
 @dataclass
 class ResultSummary:
-    all: List[Result] = field(default_factory=list)
-    ok: List[Result] = field(default_factory=list)
-    problem: List[Result] = field(default_factory=list)
-    error: List[Result] = field(default_factory=list)
     node_results: Dict[str, NodeResults] = field(default_factory=dict)
 
-    def count_hosts(self) -> Dict:
-        c = {}
-        for r in self.all:
-            c.setdefault(r.node_ip, {"all": 0, "ok": 0, "problem": 0, "error": 0})
-            c[r.node_ip]["all"] += 1
-            c[r.node_ip][r.result_type] += 1
-
-        return c
-
     def count_all(self):
-        return len(self.ok) + len(self.problem) + len(self.error)
+        return sum([len(nr.results) for nr in self.node_results.values()])
+
+    def count_type(self, result_type: ResultType):
+        return sum([len(nr.filter_results(result_type)) for nr in self.node_results.values()])
 
     def summary(self):
-        per_host_counts = [f"    {node_ip}: {cnt}" for node_ip, cnt in self.count_hosts().items()]
+        overall_summary = f"Requests: {colorful.bold_white(self.count_all())} - "
 
-        return (
-            f"all:     {self.count_all()}\n"
-            f"    ok:      {len(self.ok)}\n"
-            f"    problem: {len(self.problem)}\n"
-            f"    bad:     {len(self.error)}\n"
-            "\n\n"
-            f"hosts: \n"
-            +
-            "\n".join(per_host_counts)
-        )
+        by_type = []
+
+        cnt_ok = self.count_type("ok")
+        cnt_problem = self.count_type("problem")
+        cnt_bad = self.count_type("bad")
+
+        if cnt_ok:
+            by_type.append(colorful.bold_green(f"ok: {cnt_ok}"))
+        if cnt_problem:
+            by_type.append(colorful.bold_yellow(f"problem: {cnt_problem}"))
+        if cnt_bad:
+            by_type.append(colorful.bold_red(f"bad: {cnt_bad}"))
+
+        overall_summary += ", ".join([str(b) for b in by_type])
+
+        hosts_summary = "\n============= Hosts ================\n"
+        for nr in self.node_results.values():
+            hosts_summary += nr.summary() + "\n"
+
+
+        return overall_summary + hosts_summary
 
     def add(self, n: Node, results: List[Result]):
         node_results = self.node_results.setdefault(n.node_id, NodeResults(n, list()))
         node_results.results.extend(results)
-        for r in results:
-            l: List[Result] = getattr(self, r.result_type)
-            l.append(r)
-            self.all.append(r)
+        return node_results
 
 
 def exc_causes(e: BaseException):

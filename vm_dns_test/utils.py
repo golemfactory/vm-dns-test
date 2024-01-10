@@ -13,7 +13,7 @@ def print_env_info(golem: Golem):
     )
 
 
-def argument_parser():
+def argument_parser() -> argparse.ArgumentParser:
     current_time_str = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S%z")
     default_log_path = f"vm-dns-test-{current_time_str}.log"
 
