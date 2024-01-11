@@ -1,4 +1,5 @@
 import argparse
+import colorful
 from datetime import datetime, timezone
 
 from yapapi import Golem
@@ -7,9 +8,11 @@ from yapapi import __version__ as yapapi_version
 
 def print_env_info(golem: Golem):
     print(
-        f"yapapi version: {yapapi_version}, "
-        f"subnet: {golem.subnet_tag}, "
-        f"payment platform: {golem.payment_driver}/{golem.payment_network}\n"
+        colorful.bold_yellow(
+            f"yapapi version: {yapapi_version}, "
+            f"subnet: {golem.subnet_tag}, "
+            f"payment platform: {golem.payment_driver}/{golem.payment_network}\n"
+        )
     )
 
 

@@ -1,6 +1,6 @@
 import argparse
 import colorful
-from datetime import datetime
+from datetime import datetime, timedelta
 from dataclasses import dataclass, field, asdict
 import dns.message
 import dns.name
@@ -71,6 +71,7 @@ class Result:
 class NodeResults:
     node: Node
     results: List[Result]
+    running_time: Optional[int] = None
 
     def filter_results(self, result_type: ResultType):
         return [r for r in self.results if r.result_type == result_type]
@@ -93,7 +94,24 @@ class NodeResults:
         if bad:
             by_type.append(colorful.bold_red(f"bad: {len(bad)}"))
 
-        return out + ", ".join([str(b) for b in by_type])
+        out += ", ".join([str(b) for b in by_type])
+
+        errors = self.errors
+
+        if errors:
+            out += " " + ",".join([str(colorful.bold_red(e)) for e in errors])
+
+        out += f", time: {self.running_time}s" if self.running_time else ""
+
+        return out
+
+    @property
+    def errors(self):
+        e = set()
+        for r in self.results:
+            e.update(r.errors)
+        return e
+
 
 @dataclass
 class ResultSummary:
@@ -104,6 +122,13 @@ class ResultSummary:
 
     def count_type(self, result_type: ResultType):
         return sum([len(nr.filter_results(result_type)) for nr in self.node_results.values()])
+
+    @property
+    def errors(self):
+        e = set()
+        for nr in self.node_results.values():
+            e.update(nr.errors)
+        return e
 
     def summary(self):
         overall_summary = f"Requests: {colorful.bold_white(self.count_all())} - "
@@ -123,10 +148,15 @@ class ResultSummary:
 
         overall_summary += ", ".join([str(b) for b in by_type])
 
+        errors = self.errors
+
+        if errors:
+            overall_summary += "\n============= Errors ================\n"
+            overall_summary += "\n".join([str(colorful.bold_red(e)) for e in errors])
+
         hosts_summary = "\n============= Hosts ================\n"
         for nr in self.node_results.values():
             hosts_summary += nr.summary() + "\n"
-
 
         return overall_summary + hosts_summary
 
@@ -202,13 +232,19 @@ def main():
     parser.add_argument("-a", "--num-attempts", type=int, default=DEFAULT_NUM_ATTEMPTS)
     parser.add_argument("-t", "--timeout", type=int, default=DEFAULT_TIMEOUT)
     parser.add_argument("-o", "--out-file", type=Path, default=None)
+    parser.add_argument("-m", "--max-running-time", type=int, default=None)
     args = parser.parse_args()
 
     print(colorful.bold_white(f"Running with: {vars(args)}"))
 
     all_results: List[Result] = list()
+    start_time = datetime.now()
 
     for url in get_names(NAMES, args.num_requests):
+        if args.max_running_time:
+            if (datetime.now() - start_time).total_seconds() > args.max_running_time:
+                break
+
         url_results: List[Result] = perform_queries(
             url, num_attempts=args.num_attempts, timeout=args.timeout
         )
@@ -226,16 +262,6 @@ def main():
             outf.write(results)
     else:
         print(results)
-
-    #     out = ""
-    #     for url_result in url_results:
-    #         color = result_color(url_result)
-    #         out += f"{color(url_result)}\n"
-    #         summary.add(result_type(url_result), url_result)
-    #
-    #     print(f"{out}{len(refs)}")
-    #
-    # print(summary.summary())
 
 
 if __name__ == "__main__":

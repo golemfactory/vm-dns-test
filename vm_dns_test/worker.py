@@ -1,3 +1,6 @@
+import colorful
+from datetime import datetime
+import json
 import pathlib
 from typing import List
 from yapapi import WorkContext
@@ -14,15 +17,23 @@ async def worker(ctx: WorkContext, tasks, dns_tester_args: List, summary: Result
 
     task_cnt = 0
 
+    script = ctx.new_script()
+    script.upload_bytes(SCRIPT_CONTENTS, "/golem/dns_tester.py")
+    yield script
+
     async for task in tasks:
         task_cnt += 1
+        node = Node.get_node_by_id(ctx.provider_id)
+        node.name = ctx.provider_name
+
+        start_time = datetime.now()
+
         outputs = list()
 
-        async def add_output(output):
+        async def get_output(output):
             outputs.extend([Result(**o) for o in output])
 
         script = ctx.new_script()
-        script.upload_bytes(SCRIPT_CONTENTS, "/golem/dns_tester.py")
         script.run(
             "/usr/local/bin/python",
             "/golem/dns_tester.py",
@@ -30,15 +41,16 @@ async def worker(ctx: WorkContext, tasks, dns_tester_args: List, summary: Result
             "/golem/out.json",
             *dns_tester_args
         )
-        script.download_json("/golem/out.json", add_output)
+        script.download_json("/golem/out.json", get_output)
 
         yield script
 
-        node = Node.get_node_by_id(ctx.provider_id)
-        node.name = ctx.provider_name
-        node_results = summary.add(node, outputs)
+        summary.add(node, outputs)
 
-        task.accept_result(node_results)
+        run_summary = ResultSummary()
+        run_results = run_summary.add(node, outputs)
+        run_results.running_time = int((datetime.now() - start_time).total_seconds())
+        task.accept_result(run_results)
 
         if task_cnt >= max_tasks:
             await tasks.aclose()
