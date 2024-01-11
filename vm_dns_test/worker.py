@@ -6,19 +6,23 @@ from script.dns_tester import Node, NodeResults, Result, ResultSummary
 
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "script" / "dns_tester.py"
+SCRIPT_CONTENTS = open(SCRIPT, "rb").read()
 
 
-async def worker(ctx: WorkContext, tasks, dns_tester_args: List, summary: ResultSummary):
+async def worker(ctx: WorkContext, tasks, dns_tester_args: List, summary: ResultSummary, max_tasks = 1):
     dns_tester_args = [str(a) for a in dns_tester_args]
 
+    task_cnt = 0
+
     async for task in tasks:
+        task_cnt += 1
         outputs = list()
 
         async def add_output(output):
             outputs.extend([Result(**o) for o in output])
 
         script = ctx.new_script()
-        script.upload_file(SCRIPT, "/golem/dns_tester.py")
+        script.upload_bytes(SCRIPT_CONTENTS, "/golem/dns_tester.py")
         script.run(
             "/usr/local/bin/python",
             "/golem/dns_tester.py",
@@ -36,4 +40,5 @@ async def worker(ctx: WorkContext, tasks, dns_tester_args: List, summary: Result
 
         task.accept_result(node_results)
 
-        await tasks.aclose()
+        if task_cnt >= max_tasks:
+            await tasks.aclose()

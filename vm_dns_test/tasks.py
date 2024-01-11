@@ -11,7 +11,7 @@ from . import package, strategy, utils, worker
 
 
 async def run(
-    num_workers, num_batches, num_requests, subnet_tag, payment_driver=None, payment_network=None,
+    num_workers, num_batches, num_requests, num_batches_per_worker, subnet_tag, payment_driver=None, payment_network=None,
 ):
     summary = ResultSummary()
 
@@ -22,9 +22,9 @@ async def run(
         payment_network=payment_network,
         strategy=strategy.ScanStrategy(summary),
     ) as golem:
-        utils.print_env_info(golem)
+        colorful.bold_yellow(utils.print_env_info(golem))
         completed_tasks = golem.execute_tasks(
-            partial(worker.worker, summary=summary, dns_tester_args=["-r", num_requests]),
+            partial(worker.worker, summary=summary, dns_tester_args=["-r", num_requests], max_tasks=num_batches_per_worker),
             [Task(data=h) for h in range(num_batches)],
             payload=await package.get_package(),
             max_workers=num_workers,
