@@ -12,7 +12,7 @@ from script.dns_tester import ResultSummary
 
 if __name__ == "__main__":
     parser = utils.argument_parser()
-    parser.add_argument("-w", "--num-workers", type=int, help="Number of concurrent workers. default=%(default)s", default=32)
+    parser.add_argument("-w", "--num-workers", type=int, help="Number of concurrent workers. default=%(default)s", default=16)
     parser.add_argument("-b", "--num-batches", type=int, help="Overall number of batches/tasks to run. default=%(default)s", default=1024)
     parser.add_argument("-r", "--num-requests", type=int, help="Number of requests per batch. default=%(default)s", default=1024)
     parser.add_argument("-t", "--num-batches-per-worker", type=int, help="Number of batches (tasks) per a single worker run. default=%(default)s", default=1024)
