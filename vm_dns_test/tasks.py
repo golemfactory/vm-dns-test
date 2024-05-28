@@ -13,8 +13,9 @@ from . import package, strategy, utils, worker
 
 
 async def run(
-    num_workers, num_batches, num_requests, num_batches_per_worker, subnet_tag, max_batch_running_time = None, payment_driver=None, payment_network=None,
+    num_workers, num_batches, num_requests, num_batches_per_worker, subnet_tag, max_batch_running_time = None, payment_driver=None, payment_network=None, quiet=False,
 ):
+    start_time = datetime.now()
     summary = ResultSummary()
 
     async with Golem(
@@ -24,7 +25,8 @@ async def run(
         payment_network=payment_network,
         strategy=strategy.ScanStrategy(summary),
     ) as golem:
-        utils.print_env_info(golem)
+        if not quiet:
+            utils.print_env_info(golem)
         dns_tester_args = ["-r", num_requests]
         if max_batch_running_time:
             dns_tester_args.extend(["-m", max_batch_running_time])
@@ -44,8 +46,10 @@ async def run(
         try:
             async for task in completed_tasks:
                 results: NodeResults = task.result
-                print(colorful.bold_cyan(f"{task.data}: {results.summary()}"))
+                if not quiet:
+                    print(colorful.bold_cyan(f"{task.data}: {results.summary()}"))
         except asyncio.CancelledError:
-            return summary
+            pass
 
+    summary.running_time = int((datetime.now() - start_time).total_seconds())
     return summary

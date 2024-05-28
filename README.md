@@ -5,5 +5,5 @@ to install
 
 * git clone
 * `poetry install`
-* `python -m vm_dns_test`
+* `python -m vm_dns_test --payment-network holesky -b 16 -q -j`
 

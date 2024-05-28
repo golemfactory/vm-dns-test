@@ -45,10 +45,7 @@ async def worker(ctx: WorkContext, tasks, dns_tester_args: List, summary: Result
 
         yield script
 
-        summary.add(node, outputs)
-
-        run_summary = ResultSummary()
-        run_results = run_summary.add(node, outputs)
+        run_results = summary.add(node, outputs)
         run_results.running_time = int((datetime.now() - start_time).total_seconds())
         task.accept_result(run_results)
 

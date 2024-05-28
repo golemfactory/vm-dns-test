@@ -22,7 +22,7 @@ DEFAULT_NUM_REQUESTS = 10
 DEFAULT_NUM_ATTEMPTS = 3
 DEFAULT_TIMEOUT = 10
 
-ResultType = Literal["ok", "problem", "error"]
+ResultType = Literal["ok", "problem", "error", "bad"]
 
 
 @dataclass
@@ -76,30 +76,38 @@ class NodeResults:
     def filter_results(self, result_type: ResultType):
         return [r for r in self.results if r.result_type == result_type]
 
+    def summary_dict(self):
+        return {
+            "id": self.node.node_id,
+            "name": self.node.name,
+            "all": len(self.results),
+            "ok": len(self.filter_results("ok")),
+            "problem": len(self.filter_results("problem")),
+            "bad": len(self.filter_results("bad")),
+            "errors": list(self.errors),
+            "running_time": self.running_time,
+        }
+
     def summary(self):
+        summary_dict = self.summary_dict()
         out = (
-            f"{self.node.name} ({self.node.node_id}): "
-            f"all: {colorful.bold_white(len(self.results))}, "
+            f"{summary_dict['name']} ({summary_dict['id']}): "
+            f"all: {colorful.bold_white(summary_dict['all'])}, "
         )
-        ok = self.filter_results('ok')
-        problem = self.filter_results('problem')
-        bad = self.filter_results('bad')
 
         by_type = []
 
-        if ok:
-            by_type.append(colorful.bold_green(f"ok: {len(ok)}"))
-        if problem:
-            by_type.append(colorful.bold_yellow(f"problem: {len(problem)}"))
-        if bad:
-            by_type.append(colorful.bold_red(f"bad: {len(bad)}"))
+        if summary_dict['ok']:
+            by_type.append(colorful.bold_green(f"ok: {summary_dict['ok']}"))
+        if summary_dict['problem']:
+            by_type.append(colorful.bold_yellow(f"problem: {summary_dict['problem']}"))
+        if summary_dict['bad']:
+            by_type.append(colorful.bold_red(f"bad: {summary_dict['bad']}"))
 
         out += ", ".join([str(b) for b in by_type])
 
-        errors = self.errors
-
-        if errors:
-            out += " " + ",".join([str(colorful.bold_red(e)) for e in errors])
+        if summary_dict['errors']:
+            out += " " + ",".join([str(colorful.bold_red(e)) for e in summary_dict['errors']])
 
         out += f", time: {self.running_time}s" if self.running_time else ""
 
@@ -116,6 +124,7 @@ class NodeResults:
 @dataclass
 class ResultSummary:
     node_results: Dict[str, NodeResults] = field(default_factory=dict)
+    running_time: Optional[int] = None
 
     def count_all(self):
         return sum([len(nr.results) for nr in self.node_results.values()])
@@ -130,29 +139,35 @@ class ResultSummary:
             e.update(nr.errors)
         return e
 
+    def summary_dict(self):
+        return {
+            'all': self.count_all(),
+            'ok': self.count_type("ok"),
+            'problem': self.count_type("problem"),
+            'bad': self.count_type("bad"),
+            'errors': list(self.errors),
+            'nodes': [results.summary_dict() for _, results in self.node_results.items()],
+            'running_time': self.running_time,
+        }
+
     def summary(self):
-        overall_summary = f"Requests: {colorful.bold_white(self.count_all())} - "
+        summary_dict = self.summary_dict()
+        overall_summary = f"Requests: {colorful.bold_white(summary_dict['all'])} - "
 
         by_type = []
 
-        cnt_ok = self.count_type("ok")
-        cnt_problem = self.count_type("problem")
-        cnt_bad = self.count_type("bad")
-
-        if cnt_ok:
-            by_type.append(colorful.bold_green(f"ok: {cnt_ok}"))
-        if cnt_problem:
-            by_type.append(colorful.bold_yellow(f"problem: {cnt_problem}"))
-        if cnt_bad:
-            by_type.append(colorful.bold_red(f"bad: {cnt_bad}"))
+        if summary_dict['ok']:
+            by_type.append(colorful.bold_green(f"ok: {summary_dict['ok']}"))
+        if summary_dict['problem']:
+            by_type.append(colorful.bold_yellow(f"problem: {summary_dict['problem']}"))
+        if summary_dict['bad']:
+            by_type.append(colorful.bold_red(f"bad: {summary_dict['bad']}"))
 
         overall_summary += ", ".join([str(b) for b in by_type])
 
-        errors = self.errors
-
-        if errors:
+        if summary_dict['errors']:
             overall_summary += "\n============= Errors ================\n"
-            overall_summary += "\n".join([str(colorful.bold_red(e)) for e in errors])
+            overall_summary += "\n".join([str(colorful.bold_red(e)) for e in summary_dict['errors']])
 
         hosts_summary = "\n============= Hosts ================\n"
         for nr in self.node_results.values():
