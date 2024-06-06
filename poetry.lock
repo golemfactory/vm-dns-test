@@ -632,13 +632,13 @@ python-dateutil = ">=2.8.1,<3.0.0"
 
 [[package]]
 name = "yapapi"
-version = "0.12.0"
+version = "0.13.0"
 description = "High-level Python API for the New Golem"
 optional = false
-python-versions = ">=3.8,<4.0"
+python-versions = "<4.0,>=3.8"
 files = [
-    {file = "yapapi-0.12.0-py3-none-any.whl", hash = "sha256:c30f6f4b891a8ded9ed6847db79512a8609ca3a61604ee3d28ec76224553569a"},
-    {file = "yapapi-0.12.0.tar.gz", hash = "sha256:4b26fd824866ded097ee9d667f81c9cbf1d37d809ef8c04a59986543a5ee0798"},
+    {file = "yapapi-0.13.0-py3-none-any.whl", hash = "sha256:6ddcbba6dde0d98b4b0fd63516d2acb4f4be9b26c55b5789e61cf425204cb63c"},
+    {file = "yapapi-0.13.0.tar.gz", hash = "sha256:441a158d313b1da1c846df0c6d64115b4a24e4baf5b41c0cfb26993726f127d8"},
 ]
 
 [package.dependencies]
@@ -765,4 +765,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "3dc7691e2f1ab09e8138d17faae161bc752073247c63663bd16864b7f2fc81fc"
+content-hash = "fddfaaa0e014f43b13423c8c824140d65cbb415e3a44c1b864beb7daa1c8b19b"
